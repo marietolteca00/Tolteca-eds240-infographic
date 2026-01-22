@@ -6,6 +6,11 @@
 .RData
 .RDataTmp
 
+# Data
+/data
+
+.DS_Store
+
 # User-specific files
 .Ruserdata
 
