@@ -14,9 +14,10 @@ library(jsonlite)
 library(httr)
 library(RCurl)
 library(tibble)
+library(ggimage)
 ```
 
-# Games from Season 3-5 for both QM and C
+# Games from Season 3-5 for both Quick Match and Competitive
 Created functions and for-loop to grab seasons 3-5 for Marvel Rival for my own status.
 ```{r}
 api_key <- "eb86e90ed5b97e7e59b61602423419d9477d9d7f7481901ad3cc1b9ad9124271"
@@ -47,7 +48,7 @@ get_matches_by_mode <- function(username, season, game_mode, api_key) {
 }
 
 # For - loop
-seasons <- 3:6
+seasons <- 3:7
 game_modes <- c(0, 1)
 all_data <- list()
 
@@ -72,7 +73,8 @@ for (season in seasons) {
 all_season_combined <- bind_rows(all_data)
 
 # Write CSV
-#write.csv(all_season_combined, here("output/all_season_df.csv"), row.names = FALSE)
+#write.csv(all_season_combined, here("data/all_season_combined.csv"), row.names = FALSE)
+view(all_season_combined)
 
 ```
 # List of all the heroes from Marvel Rivals Website
@@ -87,7 +89,7 @@ res <- getURL(
 
 heroes_df <- fromJSON(res, flatten = TRUE) %>% 
   as_tibble()
-
+unique(heroes_df$name)
 ```
 
 # Data Wrangle
@@ -163,6 +165,15 @@ clean_season <- clean_season %>%
 clean_season %>% 
   filter(is.na(difficulty)) %>% 
   distinct(hero_name)
+
+# Replace Unknown Hero with Deadpool - Fix later!!!
+clean_season <- clean_season %>%
+  mutate(
+    hero_name = ifelse(hero_name == "Unknown Hero",
+                       "deadpool",
+                       hero_name)
+  )
+
 
 ```
 
@@ -244,6 +255,52 @@ ggplot(clean_season, aes(x = factor(is_win), y = damage_per_min)) +
 ggplot(clean_season, aes(x = role, y = kd_ratio, fill = mode)) +
   geom_boxplot() +
   labs(x = "Role", y = "K/D Ratio", title = "K/D by Role and Mode")
+
+# Character USAGE
+hero_usage <- clean_season %>%
+  group_by(hero_name, hero_type) %>%
+  summarise(total_duration = sum(duration, na.rm = TRUE)) %>%
+  arrange(desc(total_duration))
+
+
+top_heroes <- hero_usage %>%
+  slice_max(order_by = total_duration, n = 10)
+
+# Palette for Character
+my_colors <- c("moon knight" = "#E6D38A", 
+               "star-lord" = "#603920",
+               "phoenix" = "#C45534",
+               "jeff the land shark" = "#75AABC", 
+               "the punisher" = "#7D7E6D",
+               "captain america" = "#263969",
+               "venom" = "#2C2C2C", 
+               "winter soldier" = "#292F24",
+               "iron man" = "#A70124",
+               "gambit" = "#D36DA4", 
+               "deadpool" = "#641D22",
+               "angela" = "#924B1B")
+
+
+ggplot(top_heroes, aes(
+       x = reorder(hero_name, total_duration),
+       y = total_duration,
+       fill = hero_name   # map fill to hero_name
+     )) +
+  geom_col() +
+  scale_fill_manual(values = my_colors) +  # supply your palette here
+  coord_flip() +
+  labs(
+    title = "Top 10 Most Used Heroes by Duration",
+    x = "Hero Name",
+    y = "Total Duration",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+
 ```
 
 # V. Answer questions
@@ -276,3 +333,42 @@ Goal/Infographic Purpose:
  - Mixed players: Cannot separate my performance from my brother's since we share one profile (this means findings represent "our collective" performance rather than individual skill)
   - Uneven distribution: Some heroes have very few games played (<5), making their win rates unreliable
   - Competitive sample: Likely have fewer Competitive matches, which could make mode comparisons statistically weak
+
+
+
+```{r, warning=FALSE}
+
+top_heroes <- top_heroes %>%
+  mutate(img_url = case_when(
+    hero_name == "moon knight" ~ "https://frankgamer.com/wp-content/uploads/2024/12/Marvel-Rivals-Moon-Knight-thumbnail.jpg",
+    hero_name == "star-lord" ~ "https://preview.redd.it/i-dont-know-if-this-is-a-hot-take-or-not-but-marvel-rivals-v0-km3csnfnb0ie1.jpg?width=640&crop=smart&auto=webp&s=2c77a7917f1955ffbac85ab661ecece11ad7b6be",
+    hero_name == "phoenix"   ~ "https://i.redd.it/official-phoenix-jean-grey-render-marvel-rivals-v0-qqzf6fsxahaf1.jpg?width=904&format=pjpg&auto=webp&s=db894d77e27891b1a0498a0c8608bde3e4a9166f",
+    hero_name == "jeff the land shark"   ~ "https://static0.thegamerimages.com/wordpress/wp-content/uploads/2024/12/jeff-the-land-shark-marvel-rivals.jpg?w=1600&h=900&fit=crop",
+    hero_name == "the punisher"   ~ "https://i.pinimg.com/736x/ec/53/b0/ec53b04740c7bb8567d5a21a18071f17.jpg",
+    hero_name == "captain america"   ~ "https://i.redd.it/finally-a-comic-accurate-marvel-rivals-skin-i-give-this-v0-c89s5gourfnf1.jpg?width=1440&format=pjpg&auto=webp&s=74ce67134387e046509382acd11fa96ca5f08ab3",
+    hero_name == "venom"   ~ "https://preview.redd.it/what-do-you-think-about-marvel-rivals-venom-v0-q48tnibwd66e1.jpeg?auto=webp&s=9c913d22aa8896b3db9b0ca74c15d7ed4b97428c",
+    hero_name == "winter soldier"   ~ "https://static0.srcdn.com/wordpress/wp-content/uploads/2024/12/marvel-rivals-winter-soldier-on-blurred-background.jpg",
+    hero_name == "iron man"   ~ "https://www.charlieintel.com/cdn-image/wp-content/uploads/2024/12/23/iron-man-marvel-rivals.jpg",
+    hero_name == "gambit"   ~ "https://rivalskins.com/wp-content/uploads/2025/11/Gambit-fullbody-HD-default-scaled.jpg",
+    hero_name == "deadpool"   ~ "https://www.nme.com/wp-content/uploads/2025/12/marvel-rivals-season-6-release-date.jpg",
+    hero_name == "angela"   ~ "https://rivalskins.com/wp-content/uploads/2025/09/angela-default-full-hd-scaled.jpg",
+    TRUE ~ NA_character_
+  ))
+
+ggplot(top_heroes, aes(
+       x = reorder(hero_name, total_duration),
+       y = total_duration
+     )) +
+  geom_col(aes(fill = hero_name), show.legend = FALSE) +
+  geom_image(
+    aes(image = img_url),
+    size = 0.07,   # adjust image size
+    by = "width",  # scale by width
+    nudge_y = 2    # optional bump above bars,
+    ) +
+  coord_flip() +
+  scale_fill_manual(values = my_colors) +
+  theme_minimal()
+
+```
+
