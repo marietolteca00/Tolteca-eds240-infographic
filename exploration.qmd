@@ -4,7 +4,6 @@ author: "Marie Tolteca"
 date-modified: last-modified
 format: html
 ---
-
 # Libraries
 ```{r,message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -22,8 +21,6 @@ Created functions and for-loop to grab seasons 3-5 for Marvel Rival for my own s
 ```{r}
 api_key <- "eb86e90ed5b97e7e59b61602423419d9477d9d7f7481901ad3cc1b9ad9124271"
 USERNAME <- "kpil11"
-
-
 
 # Define the function first
 get_matches_by_mode <- function(username, season, game_mode, api_key) {
@@ -79,17 +76,17 @@ view(all_season_combined)
 ```
 # List of all the heroes from Marvel Rivals Website
 ```{r}
-# Add hero status
-headers <- c("x-api-key" = "eb86e90ed5b97e7e59b61602423419d9477d9d7f7481901ad3cc1b9ad9124271")
-
-res <- getURL(
-  "https://marvelrivalsapi.com/api/v1/heroes",
-  .opts = list(httpheader = headers, followlocation = TRUE)
-)
-
-heroes_df <- fromJSON(res, flatten = TRUE) %>% 
-  as_tibble()
-unique(heroes_df$name)
+# # Add hero status
+# headers <- c("x-api-key" = "eb86e90ed5b97e7e59b61602423419d9477d9d7f7481901ad3cc1b9ad9124271")
+# 
+# res <- getURL(
+#   "https://marvelrivalsapi.com/api/v1/heroes",
+#   .opts = list(httpheader = headers, followlocation = TRUE)
+# )
+# 
+# heroes_df <- fromJSON(res, flatten = TRUE) %>% 
+#   as_tibble()
+# unique(heroes_df$name)
 ```
 
 # Data Wrangle
@@ -99,41 +96,63 @@ head(all_season_combined)
 ```
 # Rename and replace the column names to have a simple naming convention
 ### Using `Transmute` from the dplyr package
-
 ```{r}
 clean_season <- all_season_combined %>%
   transmute(
     map_id = match_map_id,
-    duration = match_play_duration,
+    
+    # Convert seconds → minutes
+    duration = round(match_play_duration / 60, 2),
+    
     season,
     mode,
     timestamp = match_time_stamp,
+    map = map_thumbnail,
+
     
     kills = match_player$kills,
     deaths = match_player$deaths,
     assists = match_player$assists,
     is_win = match_player$is_win$is_win,
     
-    hero_name = match_player$player_hero$hero_name, 
+    hero_name = tolower(match_player$player_hero$hero_name), 
     hero_type = match_player$player_hero$hero_type,
     hero_image = match_player$player_hero$hero_portrait,
     
     total_hero_damage = match_player$player_hero$total_hero_damage,
     total_damage_taken = match_player$player_hero$total_damage_taken,
     total_hero_healing = match_player$player_hero$total_hero_heal
-  )
+    ) %>% 
+  
+  # Fixing Label for Hero
+  mutate(
+    hero_name = ifelse(hero_name == "unknown hero",
+                       "deadpool",
+                       hero_name))
+```
 
+### Integrate hero names with their roles
+```{r}
 # Add role mapping
 hero_roles <- data.frame(
-  hero_name = c("phoenix", "captain america", "the punisher", "venom", 
-                "star-lord", "moon knight", "iron man", "hulk", "loki", 
-                "mantis", "luna snow", "rocket raccoon", "jeff the land shark",
-                "winter soldier", "angela", "gambit"),
-  role = c("Duelist", "Vanguard", "Duelist", "Vanguard", 
-           "Duelist", "Duelist", "Duelist", "Vanguard", "Strategist",
-           "Strategist", "Strategist", "Strategist", "Strategist",
-           "Duelist", "Vanguard", "Strategist")
-)
+  hero_name = c("phoenix", "captain america", 
+                "the punisher", "venom", 
+                "star-lord", "moon knight", 
+                "iron man", "hulk", 
+                "loki", "mantis", 
+                "luna snow", "rocket raccoon", 
+                "jeff the land shark",
+                "winter soldier", "angela", 
+                "gambit", "deadpool"),
+  
+  role = c("Duelist", "Vanguard", 
+           "Duelist", "Vanguard", 
+           "Duelist", "Duelist", 
+           "Duelist", "Vanguard", 
+           "Strategist", "Strategist", 
+           "Strategist", "Strategist", 
+           "Strategist", "Duelist", 
+           "Vanguard", "Strategist","Strategist"))
 
 # Join Hero Roles onto new dataframe
 clean_season <- clean_season %>%
@@ -141,64 +160,63 @@ clean_season <- clean_season %>%
 
 # Check Characters used
 unique(clean_season$hero_name)
+```
+### Change Column label
+```{r}
+clean_season <- clean_season %>% 
+  mutate(win_rate = ifelse(is_win, "Win", "Lose")) %>%
+  select(-is_win)
 
-# Create list of your heroes - From Characters Used
-my_heroes <- c("phoenix", "the punisher", "captain america", "star-lord",
-               "venom", "moon knight", "jeff the land shark", "winter soldier",
-               "angela", "gambit")
-
-# Filter heroes_df to only your heroes
-heroes_lookup <- heroes_df %>%
-  filter(tolower(name) %in% my_heroes) %>%  # use tolower() in case API has different case
-  select(
-    hero_name = name,
-    real_name = real_name,
-    difficulty = difficulty
-  ) %>%
-  mutate(hero_name = tolower(hero_name))  # make sure it matches clean_season
-
-# Join to clean_season
-clean_season <- clean_season %>%
-  left_join(heroes_lookup, by = "hero_name")
-
-# Check if all matched
-clean_season %>% 
-  filter(is.na(difficulty)) %>% 
-  distinct(hero_name)
-
-# Replace Unknown Hero with Deadpool - Fix later!!!
-clean_season <- clean_season %>%
-  mutate(
-    hero_name = ifelse(hero_name == "Unknown Hero",
-                       "deadpool",
-                       hero_name)
-  )
-
-
+# Write CSV
+write.csv(clean_season, here("data/clean_season.csv"), row.names = FALSE)
 ```
 
 
 # Exploration
-### Do I perform better as DPS, Tank, or Support?
+### Do I perform better as Duelist(DPS), Vangaurd(Tank), or Strategist(Support)?
 ```{r}
 # Win rate by role
 role_stats <- clean_season %>%
   group_by(role) %>%
   summarise(
     games = n(),
-    win_rate = mean(is_win == 1)
-  )
+    win_rate = mean(win_rate == "Win"))
 
+
+# Bar Chart - Win Rate by Roles
 ggplot(role_stats, aes(x = role, y = win_rate)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(round(win_rate*100, 1), "%")), vjust = -0.5) +
   labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")
 
-# K/D distribution by role
-ggplot(clean_season, aes(x = role, y = kills / (deaths + 1))) +
-  geom_boxplot(fill = "lightblue") +
-  labs(x = "Role", y = "K/D Ratio", title = "K/D Ratio by Role")
 ```
+```{r}
+role_kd_summary <- clean_season %>%
+  group_by(role) %>%
+  summarise(
+    total_kills = sum(kills),
+    total_deaths = sum(deaths),
+    avg_kills = mean(kills),
+    avg_deaths = mean(deaths),
+    kd_ratio = sum(kills) / sum(deaths),
+    games = n()
+  )
+
+role_kd_summary
+
+# Side-by-side kills vs deaths
+role_long <- role_kd_summary %>%
+  select(role, avg_kills, avg_deaths) %>%
+  pivot_longer(cols = c(avg_kills, avg_deaths), 
+               names_to = "stat", values_to = "value")
+
+# Kill and Death Averages by Roles
+ggplot(role_long, aes(x = role, y = value, fill = stat)) +
+  geom_col(position = "dodge") +
+  labs(x = "Role", y = "Average per Game", 
+       title = "Kills vs Deaths by Role", fill = "")
+```
+
 
 # Am I getting better or plateauing?
 ### Should this be the end of my gaming career?
@@ -206,7 +224,9 @@ ggplot(clean_season, aes(x = role, y = kills / (deaths + 1))) +
 # Winning rate across seasons
 season_progression <- clean_season %>%
   group_by(season) %>%
-  summarise(win_rate = mean(is_win == 1))
+  summarise(
+    games = n(),
+    win_rate = mean(win_rate == "Win"))
 
 ggplot(season_progression, aes(x = factor(season), y = win_rate, group = 1)) +
   geom_line() +
@@ -214,7 +234,7 @@ ggplot(season_progression, aes(x = factor(season), y = win_rate, group = 1)) +
   labs(x = "Season", y = "Win Rate", title = "Win Rate by Season")
 
 # Win rate by season and mode
-ggplot(clean_season, aes(x = factor(season), fill = factor(is_win))) +
+ggplot(clean_season, aes(x = factor(season), fill = factor(win_rate))) +
   geom_bar(position = "fill") +
   facet_wrap(~mode) +
   scale_y_continuous(labels = scales::percent) +

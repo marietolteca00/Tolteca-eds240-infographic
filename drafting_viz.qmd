@@ -1,0 +1,71 @@
+---
+title: "Marvel Rivals Exploration"
+subtitle: "Drafting Vizualization - EDS 240"
+author: "Marie Tolteca"
+date-modified: last-modified
+format: html
+---
+1. Restate the questions you hope to answer with your inforgraphic. This should include one overarching question (think of this as driving the overall theme of your infographic) and at least three subquestions (each of which will be addressed by your infographic’s component visualizations). Have these questions changed at all since FPM #1? If yes, how so? 
+
+- Overall Question: 
+- 
+
+```{r}
+library(tidyverse)
+library(here)
+library(dplyr)
+library(jsonlite)
+library(httr)
+library(RCurl)
+library(tibble)
+library(ggimage)
+```
+
+
+```{r}
+# Progress by hero across seasons
+hero_season_progress <- clean_season %>%
+  group_by(hero_name, season) %>%
+  summarise(
+    games = n(),
+    win_rate = mean(win_rate == "Win")
+  ) %>%
+  filter(games > 2)  # Only heroes with 3+ games per season
+
+# Heatmap version (shows all at once)
+ggplot(hero_season_progress, aes(x = factor(season), y = hero_name, fill = win_rate)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "red", high = "green") +
+  labs(x = "Season", y = "", fill = "Win Rate",
+       title = "Hero Performance Heatmap")
+```
+
+# Average K/D By Role
+```{r}
+role_kd_summary <- clean_season %>%
+  group_by(role) %>%
+  summarise(
+    total_kills = sum(kills),
+    total_deaths = sum(deaths),
+    avg_kills = mean(kills),
+    avg_deaths = mean(deaths),
+    kd_ratio = sum(kills) / sum(deaths),
+    games = n()
+  )
+
+role_kd_summary
+
+# Side-by-side kills vs deaths
+role_long <- role_kd_summary %>%
+  select(role, avg_kills, avg_deaths) %>%
+  pivot_longer(cols = c(avg_kills, avg_deaths), 
+               names_to = "stat", values_to = "value")
+
+# Kill and Death Averages by Roles
+ggplot(role_long, aes(x = role, y = value, fill = stat)) +
+  geom_col(position = "dodge") +
+  labs(x = "Role", y = "Average per Game", 
+       title = "Kills vs Deaths by Role", fill = "")
+```
+
+
