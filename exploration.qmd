@@ -190,32 +190,6 @@ ggplot(role_stats, aes(x = role, y = win_rate)) +
   labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")
 
 ```
-```{r}
-role_kd_summary <- clean_season %>%
-  group_by(role) %>%
-  summarise(
-    total_kills = sum(kills),
-    total_deaths = sum(deaths),
-    avg_kills = mean(kills),
-    avg_deaths = mean(deaths),
-    kd_ratio = sum(kills) / sum(deaths),
-    games = n()
-  )
-
-role_kd_summary
-
-# Side-by-side kills vs deaths
-role_long <- role_kd_summary %>%
-  select(role, avg_kills, avg_deaths) %>%
-  pivot_longer(cols = c(avg_kills, avg_deaths), 
-               names_to = "stat", values_to = "value")
-
-# Kill and Death Averages by Roles
-ggplot(role_long, aes(x = role, y = value, fill = stat)) +
-  geom_col(position = "dodge") +
-  labs(x = "Role", y = "Average per Game", 
-       title = "Kills vs Deaths by Role", fill = "")
-```
 
 
 # Am I getting better or plateauing?

@@ -8,6 +8,11 @@
 
 # Data
 /data
+#Image folder
+/images
+
+#output
+/output
 
 .DS_Store
 
