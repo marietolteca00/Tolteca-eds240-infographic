@@ -97,12 +97,15 @@ head(all_season_combined)
 # Rename and replace the column names to have a simple naming convention
 ### Using `Transmute` from the dplyr package
 ```{r}
+
 clean_season <- all_season_combined %>%
   transmute(
     map_id = match_map_id,
     
     # Convert seconds → minutes
     duration = round(match_play_duration / 60, 2),
+    duration_hours = round(match_play_duration / 60 / 60, 2),
+
     
     season,
     mode,
@@ -211,7 +214,6 @@ ggplot(season_progression, aes(x = factor(season), y = win_rate, group = 1)) +
 ggplot(clean_season, aes(x = factor(season), fill = factor(win_rate))) +
   geom_bar(position = "fill") +
   facet_wrap(~mode) +
-  scale_y_continuous(labels = scales::percent) +
   labs(x = "Season", y = "Win Rate", 
        title = "Win Rate: Competitive vs Quick Match",
        fill = "Win")

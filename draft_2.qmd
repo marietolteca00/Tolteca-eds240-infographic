@@ -1,0 +1,112 @@
+---
+title: "draft_2"
+format: html
+---
+# Libraries
+```{r}
+library(tidyverse)
+library(here)
+library(dplyr)
+library(ggimage)
+library(patchwork)
+library(glue)
+library(showtext)
+library(ggtext)
+
+#......................import Google fonts.......................
+# `name` is the name of the font as it appears in Google Fonts
+# `family` is the user-specified id that you'll use to apply a font in your ggplot
+
+font.add.google(name = "Sarala", family = "sarala")
+
+font.add.google(name = "Noto Sans", family = "noto-sans")
+
+font.add.google(name = "Red Hat Mono", family = "red")
+
+#....................import Font Awesome fonts...................
+font_add(family = "fa-brands",
+         regular = here::here("fonts","Font Awesome 7 Brands-Regular-400.otf"))
+```
+
+# Import Data
+```{r}
+
+```
+
+
+```{r}
+#| fig-width: 12
+#| fig-height: 10
+
+#.........................create caption.........................
+github_icon <- "&#xf09b"
+github_username <- "marietolteca00"
+
+caption <- glue::glue(
+  "Data Source: © 2025 MARVEL. Marvel Rivals belongs to NetEase, Inc.<br>
+  <span style='font-family:fa-brands;'>{github_icon};</span>
+  {github_username}"
+)
+
+# Fix Heroes image URL in hero_kd_summary
+hero_kd_summary <- hero_kd_summary %>%
+  mutate(
+    image_url = case_when(
+      hero_name == "phoenix" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/40/img_phoenix.png",
+      hero_name == "captain america" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/3/img_captain-america.png",
+      hero_name == "moon knight" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/16/img_moon-knight.png",
+      hero_name == "star-lord" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/24/img_star-lord.png",
+      hero_name == "the punisher" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/20/img_icon_the-punisher.webp",
+      hero_name == "winter soldier" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/28/img_winter-soldier.webp",
+      hero_name == "jeff the land shark" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/10/img_jeff-the-land-shark.webp",
+      hero_name == "venom" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/27/img_venom.webp",
+
+      TRUE ~ image_url
+    )
+  )
+
+# Then recreate hero_polar with the fixed data
+hero_polar <- hero_kd_summary %>%
+  select(hero_name, avg_kills, avg_deaths, role, image_url) %>%
+  pivot_longer(cols = c(avg_kills, avg_deaths), 
+               names_to = "stat", 
+               values_to = "value") %>%
+  mutate(stat_label = ifelse(stat == "avg_kills", "Kills", "Deaths")) %>%
+  group_by(hero_name) %>%
+  mutate(
+    pct = value / sum(value),
+    y_pos = cumsum(pct) - 0.5 * pct
+  )
+
+# Plot
+hero_polar %>%
+  ggplot() +
+  # Adding Images from website URL
+  geom_from_path(
+    data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
+    aes(x = 0, y = 0, path = image_url), 
+    width = 0.50
+  ) +
+  # donut Hole plot
+  geom_col(aes(x = 5, y = pct, fill = stat_label), width = 2, alpha = 0.8) +  # Change x from 3 to 4
+
+  geom_text(aes(x = 5.5, y = y_pos, label = round(value, 1)),  # Adjust text position too
+            size = 3, fontface = "bold") +
+  facet_wrap(~hero_name, ncol = 4) +
+  scale_fill_manual(values = c("Kills" = "#99381E", "Deaths" = "#4E5472")) +
+  coord_polar("y") +
+  xlim(0, 6) +  # Increase limit to accommodate new positions
+  labs(fill = "",
+       title = "Hero Breakdown",
+       subtitle= "Kill to Death Comparison",
+       caption = caption) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold", margin = margin(b = 10)),
+    legend.position = "bottom",
+    legend.text = element_text(size = 10),
+    plot.margin = margin(10, 20, 10, 20),
+    panel.spacing = unit(1.5, "lines")
+  )
+```
+
