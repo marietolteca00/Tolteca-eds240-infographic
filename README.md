@@ -1,6 +1,10 @@
-# Agriculture Crop Recommendation
 
-Final Project Infographic for EDS-240
+
+# FIXXXXXXXXX UPDATEEEEEE
+
+#### Agriculture Crop Recommendation
+
+Final Project Info-Graphic for EDS-240
 
 ##### Author: Marie Tolteca
 
@@ -15,6 +19,7 @@ What is the most consumed crop that farmers should be informed about to plant mo
 Which crop type has higher levels of Nitrogen and ph levels?
 
 # Repository Structure
+# UPDATE!!!!!!!
 
 ```         
 ├── data

@@ -5,7 +5,7 @@ format:
     fig-align: center
 ---
 # Libraries
-```{r, warning=FALSE}
+```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(here)
 library(dplyr)
@@ -141,6 +141,7 @@ hero_polar %>%
     face = "bold",
     size = 20,
     hjust = 0.5,
+    color = "#ACAB97",
     margin = margin(b = 10)),
   
   plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 20)),
@@ -160,12 +161,21 @@ hero_polar %>%
 ```
 # Role Stats Finalizing
 ```{r}
+# role_stats <- role_stats %>% 
+#   mutate(
+#     image_url = case_when(
+#       role == "Duelist" ~ "https://pbs.twimg.com/media/GuypdJiWcAEZmFD.jpg",
+#       TRUE ~ image_url
+#     )
+#   )
 # Bar Chart - Win Rate by Roles
 ggplot(role_stats, aes(x = role, y = win_rate)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(round(win_rate*100, 1), "%")), vjust = -0.5) +
   labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")+
-  geom_image(aes(image = ))
-  theme_linedraw()
+  geom_image(aes(image =))+
+  theme_spiderman()
+
+
 ```
 
