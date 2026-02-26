@@ -78,6 +78,8 @@ hero_kd_summary <- hero_kd_summary %>%
     )
   )
 
+## Factor Re-Order!!!!!!
+
 # Then recreate hero_polar with the fixed data
 hero_polar <- hero_kd_summary %>%
   select(hero_name, avg_kills, avg_deaths, role, image_url) %>%
@@ -173,9 +175,7 @@ ggplot(role_stats, aes(x = role, y = win_rate)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(round(win_rate*100, 1), "%")), vjust = -0.5) +
   labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")+
-  geom_image(aes(image =))+
-  theme_spiderman()
-
+  geom_image(aes(image =))
 
 ```
 
