@@ -105,6 +105,7 @@ hero_season_progress <- clean_season %>%
   ) %>%
   filter(games > 2)  # Only heroes with 3+ games per season
 
+# Kill / Death Ratio 
 role_kd_summary <- clean_season %>%
   group_by(role) %>%
   summarise(
