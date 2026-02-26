@@ -198,7 +198,8 @@ role_stats <- clean_season %>%
   summarise(
     games = n(),
     win_rate = mean(win_rate == "Win"))
-
+# Write CSV
+#write.csv(role_stats, here("data/role_stats.csv"), row.names = FALSE)
 
 # Bar Chart - Win Rate by Roles
 ggplot(role_stats, aes(x = role, y = win_rate)) +
@@ -284,6 +285,9 @@ hero_kd_summary <- hero_kd_summary %>%
 
 # Check if join worked
 hero_kd_summary %>% select(hero_name, imageUrl, image_url)
+
+# # Write CSV
+#write.csv(hero_kd_summary, here("data/hero_kd_summary.csv"), row.names = FALSE)
 
 # Plot 1: Average Kills with hero images
 library(ggpath)
@@ -530,49 +534,7 @@ ggplot(top_heroes, aes(
 ```
 
 
-```{r}
-# Character USAGE
-hero_usage <- clean_season %>%
-  group_by(hero_name, hero_type) %>%
-  summarise(total_duration = sum(duration, na.rm = TRUE)) %>%
-  arrange(desc(total_duration))
 
-
-top_heroes <- hero_usage %>%
-  slice_max(order_by = total_duration, n = 10)
-
-# Palette for Character
-my_colors <- c("moon knight" = "#E6D38A", 
-               "star-lord" = "#603920",
-               "phoenix" = "#C45534",
-               "jeff the land shark" = "#75AABC", 
-               "the punisher" = "#7D7E6D",
-               "captain america" = "#263969",
-               "venom" = "#2C2C2C", 
-               "winter soldier" = "#292F24",
-               "iron man" = "#A70124",
-               "gambit" = "#D36DA4", 
-               "deadpool" = "#641D22",
-               "angela" = "#924B1B")
-
-
-ggplot(top_heroes, aes(
-       x = reorder(hero_name, total_duration),
-       y = total_duration,
-       fill = hero_name   # map fill to hero_name
-     )) +
-  geom_col() +
-  scale_fill_manual(values = my_colors) +  # supply your palette here
-  coord_flip() +
-  labs(
-    title = "Top 10 Most Used Heroes by Duration",
-    x = "Hero Name",
-    y = "Total Duration",
-    fill = ""
-  ) +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
 
 ```{r}
 best_maps <- map_hero_performance %>%

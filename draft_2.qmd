@@ -1,9 +1,11 @@
 ---
-title: "draft_2"
-format: html
+title: "Finalizing Vizs"
+format:
+  html:
+    fig-align: center
 ---
 # Libraries
-```{r}
+```{r, warning=FALSE}
 library(tidyverse)
 library(here)
 library(dplyr)
@@ -12,6 +14,8 @@ library(patchwork)
 library(glue)
 library(showtext)
 library(ggtext)
+library(ggpath)
+
 
 #......................import Google fonts.......................
 # `name` is the name of the font as it appears in Google Fonts
@@ -29,22 +33,31 @@ font_add(family = "fa-brands",
 ```
 
 # Import Data
-```{r}
-
+```{r, warning=FALSE,message=FALSE}
+hero_kd_summary <- read.csv(here('data','hero_kd_summary.csv'))
+role_stats <- read.csv(here('data','role_stats.csv'))
 ```
 
 
-```{r}
-#| fig-width: 12
-#| fig-height: 10
+```{r, warning=FALSE}
+#| fig-width: 10
+#| fig-height: 8
+#| out-width: "100%"
+showtext.auto(enable = TRUE)
+
+#..........................create title..........................
+
+title <- glue::glue("<span style='color:#182C2C;'>Hero</span> 
+                    <span style='color:#E60013;'>Comparison</span>")
 
 #.........................create caption.........................
-github_icon <- "&#xf09b"
+
+github_icon <- "\uf09b"
 github_username <- "marietolteca00"
 
 caption <- glue::glue(
-  "Data Source: © 2025 MARVEL. Marvel Rivals belongs to NetEase, Inc.<br>
-  <span style='font-family:fa-brands;'>{github_icon};</span>
+  "Data Source: ©2026 MARVEL <br>
+  <span style='font-family:fa-brands;'>{github_icon}</span>
   {github_username}"
 )
 
@@ -72,6 +85,7 @@ hero_polar <- hero_kd_summary %>%
                names_to = "stat", 
                values_to = "value") %>%
   mutate(stat_label = ifelse(stat == "avg_kills", "Kills", "Deaths")) %>%
+  mutate(hero_name = str_to_title(hero_name)) %>%
   group_by(hero_name) %>%
   mutate(
     pct = value / sum(value),
@@ -84,29 +98,74 @@ hero_polar %>%
   # Adding Images from website URL
   geom_from_path(
     data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
-    aes(x = 0, y = 0, path = image_url), 
-    width = 0.50
-  ) +
-  # donut Hole plot
+    aes(x = 0, y = 0, path = image_url),
+    width = 0.50) +
+  
+  # Donut Hole plot
   geom_col(aes(x = 5, y = pct, fill = stat_label), width = 2, alpha = 0.8) +  # Change x from 3 to 4
 
-  geom_text(aes(x = 5.5, y = y_pos, label = round(value, 1)),  # Adjust text position too
-            size = 3, fontface = "bold") +
+  geom_text(aes(x = 5.2, y = y_pos, label = round(value, 1)),  # Adjust text position too
+            size = 4, fontface = "bold") +
+  
   facet_wrap(~hero_name, ncol = 4) +
+  
   scale_fill_manual(values = c("Kills" = "#99381E", "Deaths" = "#4E5472")) +
+  
   coord_polar("y") +
+  
   xlim(0, 6) +  # Increase limit to accommodate new positions
+  
   labs(fill = "",
-       title = "Hero Breakdown",
+       title = title,
        subtitle= "Kill to Death Comparison",
        caption = caption) +
+  
   theme_void() +
+  
   theme(
-    strip.text = element_text(size = 10, face = "bold", margin = margin(b = 10)),
-    legend.position = "bottom",
-    legend.text = element_text(size = 10),
-    plot.margin = margin(10, 20, 10, 20),
-    panel.spacing = unit(1.5, "lines")
+    plot.background = element_rect(fill = "lightgrey", color = "aliceblue", linewidth = 3),
+    panel.background = element_rect(fill = "azure2"),
+    
+  strip.text = element_text(size = 12, face = "bold", margin = margin(b = 5)),
+  
+  legend.position = "bottom",
+  
+  legend.text = element_text(size = 15),
+  
+  plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
+  
+  panel.spacing = unit(1.5, "lines"),
+  
+  plot.title = ggtext::element_markdown(
+    family = "noto-sans",
+    face = "bold",
+    size = 20,
+    hjust = 0.5,
+    margin = margin(b = 10)),
+  
+  plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 20)),
+  
+  plot.caption = ggtext::element_markdown(
+    face = "italic",
+    size = 8,
+    margin = margin(t = 15),
+    lineheight = 1.5)
   )
+  
+# Uncomment To Show Correctly
+
+# Always turn off
+#showtext.auto(enable = FALSE)
+
+```
+# Role Stats Finalizing
+```{r}
+# Bar Chart - Win Rate by Roles
+ggplot(role_stats, aes(x = role, y = win_rate)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = paste0(round(win_rate*100, 1), "%")), vjust = -0.5) +
+  labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")+
+  geom_image(aes(image = ))
+  theme_linedraw()
 ```
 
