@@ -23,6 +23,7 @@ library(ggpath)
 
 font.add.google(name = "Sarala", family = "sarala")
 
+
 font.add.google(name = "Noto Sans", family = "noto-sans")
 
 font.add.google(name = "Red Hat Mono", family = "red")
