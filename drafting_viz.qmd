@@ -128,6 +128,7 @@ role_long <- role_kd_summary %>%
 
 # K/D summary by role AND hero
 hero_kd_summary <- clean_season %>%
+  #mutate(hero_name = str_to_title(hero_name)) %>% 
   group_by(role, hero_name) %>%
   summarise(
     total_kills = sum(kills),
@@ -138,7 +139,7 @@ hero_kd_summary <- clean_season %>%
     games = n(),
     .groups = "drop"
   ) %>%
-  filter(games >= 3)   # Only heroes with 3+ games
+  filter(games >= 1)   # Only heroes with 3+ games
 
 # Map performance by hero (filter maps with 3+ games)
 map_hero_performance <- clean_season %>%
@@ -150,8 +151,8 @@ map_hero_performance <- clean_season %>%
   filter(games >= 2)  # Only include map+hero combos with 3+ games
 
 # See if you have enough data
-map_hero_performance
-
+unique(map_hero_performance$hero_name)
+unique(hero_kd_summary$hero_name)
 
 # # Write CSV
 # write.csv(hero_kd_summary, here("data/hero_kd_summary.csv"), row.names = FALSE)
@@ -163,31 +164,45 @@ map_hero_performance
 # write.csv(role_long, here("data/role_long.csv"), row.names = FALSE)
 # # Write CSV
 # write.csv(hero_season_progress, here("data/hero_season_progress.csv"), row.names = FALSE)
-
-
-
 ```
-```{r}
-# Winning rate across seasons
-season_progression <- clean_season %>%
-  group_by(season) %>%
-  summarise(
-    games = n(),
-    win_rate = mean(win_rate == "Win"))
 
-ggplot(season_progression, aes(x = factor(season), y = win_rate, group = 1)) +
-  geom_line() +
-  geom_point(size = 3) +
-  labs(x = "Season", y = "Win Rate", title = "Win Rate by Season")
+
+```{r}
+
+season_progression <- clean_season %>%
+  group_by(season, mode) %>%
+  summarise(
+    win_rate = mean(win_rate == "Win"),
+    .groups = "drop")
+
+ggplot(season_progression, 
+       aes(x = factor(season), 
+           y = win_rate, 
+           fill = mode)) +
+  geom_col(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = scales::percent(win_rate, accuracy = 1)),
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 4
+  ) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0, 0.8)) +
+  labs(
+    x = "Season",
+    y = "Win Rate",
+    title = "Win Rate Across Seasons by Mode",
+    fill = "Mode"
+  )
 
 # Win rate by season and mode
-ggplot(clean_season, aes(x = factor(season), fill = factor(win_rate))) +
-  geom_bar(position = "fill") +
-  facet_wrap(~mode) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(x = "Season", y = "Win Rate", 
-       title = "Win Rate: Competitive vs Quick Match",
-       fill = "Win")
+# ggplot(clean_season, aes(x = factor(season), fill = factor(win_rate))) +
+#   geom_bar(position = "fill") +
+#   facet_wrap(~mode) +
+#   scale_y_continuous(labels = scales::percent) +
+#   labs(x = "Season", y = "Win Rate", 
+#        title = "Win Rate: Competitive vs Quick Match",
+#        fill = "Win")
 ```
 
 
@@ -272,54 +287,54 @@ heroes_df <- fromJSON(res, flatten = TRUE) %>%
 
 ```
 ## Draft 1- Barchart with image
-```{r}
+```{r, warning=FALSE}
 # Join hero images to your K/D data
 hero_kd_summary <- hero_kd_summary %>%
   left_join(
-    heroes_df %>% select(name, imageUrl), 
+    heroes_df %>% 
+      select(name, imageUrl),
     by = c("hero_name" = "name")
   ) %>%
   mutate(
     # Convert to full URL (adjust domain if needed)
     image_url = paste0("https://marvelrivalsapi.com", imageUrl)
   )
+# 
+# # Check if join worked
+# hero_kd_summary %>% select(hero_name, imageUrl, image_url)
+# 
 
-# Check if join worked
-hero_kd_summary %>% select(hero_name, imageUrl, image_url)
-
-# # Write CSV
-#write.csv(hero_kd_summary, here("data/hero_kd_summary.csv"), row.names = FALSE)
-
-# Plot 1: Average Kills with hero images
-library(ggpath)
-
-p1 <- ggplot(hero_kd_summary, aes(x = reorder(hero_name, avg_kills), y = avg_kills)) +
-  geom_col(aes(fill = role)) +
-  geom_from_path(aes(y = avg_kills/2, path = image_url), width = 0.08) +
-  coord_flip() +
-  scale_y_continuous(breaks = seq(0, max(hero_kd_summary$avg_kills) + 1, by = 2)) +
-  labs(x = "", y = "Avg Kills per Game", title = "Average Kills by Hero") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-# Plot 2: Average Deaths with hero images
-p2 <- ggplot(hero_kd_summary, aes(x = reorder(hero_name, avg_deaths), y = avg_deaths)) +
-  geom_col(aes(fill = role)) +
-  geom_from_path(aes(y = avg_deaths/2, path = image_url), width = 0.08) +
-  coord_flip() +
-  scale_y_continuous(breaks = seq(0, max(hero_kd_summary$avg_deaths) + 1, by = 2)) +
-  labs(x = "", y = "Avg Deaths per Game", title = "Average Deaths by Hero", fill = "Role") +
-  theme_minimal() +
-  theme(legend.position = "right")
-
-# Display together
-library(patchwork)
-p1 / p2
+# 
+# # Plot 1: Average Kills with hero images
+# library(ggpath)
+# 
+# p1 <- ggplot(hero_kd_summary, aes(x = reorder(hero_name, avg_kills), y = avg_kills)) +
+#   geom_col(aes(fill = role)) +
+#   geom_from_path(aes(y = avg_kills/2, path = image_url), width = 0.08) +
+#   coord_flip() +
+#   scale_y_continuous(breaks = seq(0, max(hero_kd_summary$avg_kills) + 1, by = 2)) +
+#   labs(x = "", y = "Avg Kills per Game", title = "Average Kills by Hero") +
+#   theme_minimal() +
+#   theme(legend.position = "none")
+# 
+# # Plot 2: Average Deaths with hero images
+# p2 <- ggplot(hero_kd_summary, aes(x = reorder(hero_name, avg_deaths), y = avg_deaths)) +
+#   geom_col(aes(fill = role)) +
+#   geom_from_path(aes(y = avg_deaths/2, path = image_url), width = 0.08) +
+#   coord_flip() +
+#   scale_y_continuous(breaks = seq(0, max(hero_kd_summary$avg_deaths) + 1, by = 2)) +
+#   labs(x = "", y = "Avg Deaths per Game", title = "Average Deaths by Hero", fill = "Role") +
+#   theme_minimal() +
+#   theme(legend.position = "right")
+# 
+# # Display together
+# library(patchwork)
+# p1 / p2
 ```
 
 
 ## Draft 2 - Attempting adding rings into png of heroes
-```{r}
+```{r, warning=FALSE}
 hero_polar <- hero_kd_summary %>%
   select(hero_name, avg_kills, avg_deaths, role, image_url) %>%
   pivot_longer(cols = c(avg_kills, avg_deaths), 
@@ -365,6 +380,7 @@ hero_kd_summary <- hero_kd_summary %>%
       hero_name == "winter soldier" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/28/img_winter-soldier.webp",
       hero_name == "jeff the land shark" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/10/img_jeff-the-land-shark.webp",
       hero_name == "venom" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/27/img_venom.webp",
+      hero_name == "squirrel girl" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/32/img_squirrel-girl.webp",
 
       TRUE ~ image_url
     )
@@ -383,34 +399,37 @@ hero_polar <- hero_kd_summary %>%
     y_pos = cumsum(pct) - 0.5 * pct
   )
 
-hero_polar %>%
-  ggplot() +
-  geom_col(aes(x = 3, y = pct, fill = stat_label), width = 1, alpha = 0.8) +
-  geom_from_path(
-    data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
-    aes(x = 0, y = 0, path = image_url), 
-    width = 0.35  # Reduce from 0.5 to 0.35
-  ) +
-  geom_text(aes(x = 4.2, y = y_pos, label = round(value, 1)), 
-            size = 4, fontface = "bold") +  # Also reduced text size
-  facet_wrap(~hero_name, ncol = 3) +
-  scale_fill_manual(values = c("Kills" = "#e74c3c", "Deaths" = "#3498db")) +
-  coord_polar("y") +
-  xlim(0, 5) +
-  labs(fill = "") +
-  theme_void() +
-  theme(
-    strip.text = element_text(size = 8, face = "bold", margin = margin(b = 8)),
-    legend.position = "bottom",
-    legend.text = element_text(size = 10),
-    plot.margin = margin(20, 20, 20, 20),
-    panel.spacing = unit(1.5, "lines")  # Add more space between facets
-  )
+# hero_polar %>%
+#   ggplot() +
+#   geom_col(aes(x = 3, y = pct, fill = stat_label), width = 1, alpha = 0.8) +
+#   geom_from_path(
+#     data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
+#     aes(x = 0, y = 0, path = image_url), 
+#     width = 0.35  # Reduce from 0.5 to 0.35
+#   ) +
+#   geom_text(aes(x = 4.2, y = y_pos, label = round(value, 1)), 
+#             size = 4, fontface = "bold") +  # Also reduced text size
+#   facet_wrap(~hero_name, ncol = 3) +
+#   scale_fill_manual(values = c("Kills" = "#e74c3c", "Deaths" = "#3498db")) +
+#   coord_polar("y") +
+#   xlim(0, 5) +
+#   labs(fill = "") +
+#   theme_void() +
+#   theme(
+#     strip.text = element_text(size = 8, face = "bold", margin = margin(b = 8)),
+#     legend.position = "bottom",
+#     legend.text = element_text(size = 10),
+#     plot.margin = margin(20, 20, 20, 20),
+#     panel.spacing = unit(1.5, "lines")  # Add more space between facets
+#   )
 ```
 ## Final Draft Now Complete
 ```{r}
 #| fig-width: 12
 #| fig-height: 10
+
+showtext.auto(enable = TRUE)
+
 
 #.........................create caption.........................
 github_icon <- "&#xf09b"
@@ -424,28 +443,38 @@ caption <- glue::glue(
 
 # Fix Heroes image URL in hero_kd_summary
 hero_kd_summary <- hero_kd_summary %>%
-  mutate(
-    image_url = case_when(
-      hero_name == "phoenix" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/40/img_phoenix.png",
-      hero_name == "captain america" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/3/img_captain-america.png",
-      hero_name == "moon knight" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/16/img_moon-knight.png",
-      hero_name == "star-lord" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/24/img_star-lord.png",
-      hero_name == "the punisher" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/20/img_icon_the-punisher.webp",
-      hero_name == "winter soldier" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/28/img_winter-soldier.webp",
-      hero_name == "jeff the land shark" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/10/img_jeff-the-land-shark.webp",
-      hero_name == "venom" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/27/img_venom.webp",
+   mutate(
+     image_url = case_when(
+       hero_name == "phoenix" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/40/img_phoenix.png",
+       hero_name == "captain america" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/3/img_captain-america.png",
+       hero_name == "moon knight" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/16/img_moon-knight.png",
+       hero_name == "star-lord" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/24/img_star-lord.png",
+       hero_name == "the punisher" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/20/img_icon_the-punisher.webp",
+       hero_name == "winter soldier" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/28/img_winter-soldier.webp",
+       hero_name == "jeff the land shark" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/10/img_jeff-the-land-shark.webp",
+       hero_name == "venom" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/27/img_venom.webp",
+       hero_name == "iron man" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/9/img_iron-man.webp",
+       hero_name == "angela" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/42/img_angela.webp",
+       hero_name == "deadpool" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/46/img_deadpool.webp",
+       hero_name == "squirrel girl" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/32/img_squirrel-girl.webp",
+       hero_name == "gambit" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/44/img_gambit.webp",
+       TRUE ~ image_url
+     )
+   )
 
-      TRUE ~ image_url
-    )
-  )
+#write.csv(hero_kd_summary, here("data/hero_kd_summary.csv"), row.names = FALSE)
+
 
 # Recreate hero_polar with the fixed data
 hero_polar <- hero_kd_summary %>%
+  mutate(hero_name = reorder(hero_name, -avg_kills)) %>%
+  mutate(hero_name = str_to_title(hero_name)) %>% 
   select(hero_name, avg_kills, avg_deaths, role, image_url) %>%
   pivot_longer(cols = c(avg_kills, avg_deaths), 
                names_to = "stat", 
                values_to = "value") %>%
   mutate(stat_label = ifelse(stat == "avg_kills", "Kills", "Deaths")) %>%
+  mutate(hero_name = reorder(hero_name, -value[stat == "avg_kills"][match(hero_name, hero_name[stat == "avg_kills"])])) %>% 
   group_by(hero_name) %>%
   mutate(
     pct = value / sum(value),
@@ -453,7 +482,8 @@ hero_polar <- hero_kd_summary %>%
   )
 
 # Write CSV
-#write.csv(hero_polar, here("data/hero_polar.csv"), row.names = FALSE)
+# write.csv(hero_polar, here("data/hero_polar.csv"), row.names = FALSE)
+
 
 # Plot
 hero_polar %>%
@@ -484,6 +514,44 @@ hero_polar %>%
     legend.text = element_text(size = 10),
     plot.margin = margin(10, 20, 10, 20),
     panel.spacing = unit(1.5, "lines")
+  )
+showtext.auto(enable = FALSE)
+
+```
+
+```{r}
+#| fig-width: 12
+#| fig-height: 10
+showtext.auto(enable = TRUE)
+
+
+hero_polar %>%
+  ggplot() +
+  geom_from_path(
+    data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
+    aes(x = 0, y = 0, path = image_url), 
+    width = 0.50
+  ) +
+  geom_col(aes(x = 5, y = pct, fill = stat_label), width = 2, alpha = 0.8) +
+  geom_text(
+    data = . %>% filter(value > 0),
+    aes(x = 5.2, y = y_pos, label = round(value, 1)),
+    size = 3, fontface = "bold"
+  ) +
+facet_wrap(~ role + hero_name, ncol = 4)+
+scale_fill_manual(values = c("Kills" = "#4E5472", "Deaths" = "#99381E")) +
+  coord_polar("y") +
+  xlim(0, 6) +
+  labs(
+    fill = "",
+    title = "Hero Breakdown",
+    subtitle = "Kill to Death Comparison",
+    caption = caption
+  ) +
+  theme_void() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    legend.position = "bottom"
   )
 ```
 
@@ -536,25 +604,3 @@ ggplot(top_heroes, aes(
 
 
 
-
-```{r}
-best_maps <- map_hero_performance %>%
-  group_by(hero_name) %>%
-  slice_max(win_rate, n = 1)
-
-
-ggplot(best_maps, aes(x = hero_name, y = win_rate, fill = as.factor(map_id))) +
-  geom_col() +
-  coord_flip() +
-  labs(x = "Hero", y = "Win Rate", fill = "Best Map",
-       title = "Best Performing Map for Each Hero")
-```
-
-```{r}
-# Heatmap version (shows all at once)
-ggplot(hero_season_progress, aes(x = factor(season), y = hero_name, fill = win_rate)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient(low = "red", high = "green") +
-  labs(x = "Season", y = "", fill = "Win Rate",
-       title = "Hero Performance Heatmap")
-```

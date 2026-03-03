@@ -84,7 +84,7 @@ view(all_season_combined)
 #   .opts = list(httpheader = headers, followlocation = TRUE)
 # )
 # 
-# heroes_df <- fromJSON(res, flatten = TRUE) %>% 
+# heroes_df <- fromJSON(res, flatten = TRUE) %>%
 #   as_tibble()
 # unique(heroes_df$name)
 ```
@@ -132,6 +132,7 @@ clean_season <- all_season_combined %>%
     hero_name = ifelse(hero_name == "unknown hero",
                        "deadpool",
                        hero_name))
+view(clean_season)
 ```
 
 ### Integrate hero names with their roles
@@ -146,7 +147,7 @@ hero_roles <- data.frame(
                 "luna snow", "rocket raccoon", 
                 "jeff the land shark",
                 "winter soldier", "angela", 
-                "gambit", "deadpool"),
+                "gambit", "deadpool", "squirrel girl"),
   
   role = c("Duelist", "Vanguard", 
            "Duelist", "Vanguard", 
@@ -155,7 +156,7 @@ hero_roles <- data.frame(
            "Strategist", "Strategist", 
            "Strategist", "Strategist", 
            "Strategist", "Duelist", 
-           "Vanguard", "Strategist","Strategist"))
+           "Vanguard", "Strategist","Strategist", "Duelist"))
 
 # Join Hero Roles onto new dataframe
 clean_season <- clean_season %>%
@@ -166,12 +167,21 @@ unique(clean_season$hero_name)
 ```
 ### Change Column label
 ```{r}
+
 clean_season <- clean_season %>% 
   mutate(win_rate = ifelse(is_win, "Win", "Lose")) %>%
-  select(-is_win)
+  select(-is_win) %>% 
+  mutate(season_label = paste("Season", season))
+
+clean_season <- bind_rows(
+  clean_season,
+  clean_season %>% mutate(season_label = "All Seasons")
+)
+
+view(clean_season)
 
 # Write CSV
-write.csv(clean_season, here("data/clean_season.csv"), row.names = FALSE)
+#write.csv(clean_season, here("data/clean_season.csv"), row.names = FALSE)
 ```
 
 
@@ -231,18 +241,18 @@ clean_season <- clean_season %>%
   )
 
 # Scatter: K/D vs Damage
-ggplot(clean_season, aes(x = kd_ratio, y = damage_per_min, color = factor(is_win))) +
+ggplot(clean_season, aes(x = kd_ratio, y = damage_per_min, color = factor(win_rate))) +
   geom_point(alpha = 0.5) +
   labs(x = "K/D Ratio", y = "Damage per Minute", 
        title = "K/D vs Damage Output", color = "Win")
 
 # Boxplot comparison
-ggplot(clean_season, aes(x = factor(is_win), y = kd_ratio)) +
+ggplot(clean_season, aes(x = factor(win_rate), y = kd_ratio)) +
   geom_boxplot(fill = "lightgreen") +
   labs(x = "Match Result (0=Loss, 1=Win)", y = "K/D Ratio",
        title = "K/D Ratio by Match Outcome")
 
-ggplot(clean_season, aes(x = factor(is_win), y = damage_per_min)) +
+ggplot(clean_season, aes(x = factor(win_rate), y = damage_per_min)) +
   geom_boxplot(fill = "coral") +
   labs(x = "Match Result (0=Loss, 1=Win)", y = "Damage per Minute",
        title = "Damage Output by Match Outcome")

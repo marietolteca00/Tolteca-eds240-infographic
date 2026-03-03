@@ -36,20 +36,24 @@ font_add(family = "fa-brands",
 # Import Data
 ```{r, warning=FALSE,message=FALSE}
 hero_kd_summary <- read.csv(here('data','hero_kd_summary.csv'))
+hero_polar <- read.csv(here('data','hero_polar.csv'))
 role_stats <- read.csv(here('data','role_stats.csv'))
 ```
 
-
+# UPDATED K/D Percent Ratio
 ```{r, warning=FALSE}
-#| fig-width: 10
-#| fig-height: 8
+#| fig-width: 12
+#| fig-height: 10
 #| out-width: "100%"
+
+
 showtext.auto(enable = TRUE)
 
 #..........................create title..........................
-
-title <- glue::glue("<span style='color:#182C2C;'>Hero</span> 
-                    <span style='color:#E60013;'>Comparison</span>")
+title <- glue::glue("<span style='color:#99381E;'>Kill</span>
+                    <span style='color:#000000;'>vs</span>
+                    <span style='color:#4E5472;'>Death</span>
+                    <span style='color:#000000;'>Hero Comparison</span>")
 
 #.........................create caption.........................
 
@@ -62,121 +66,171 @@ caption <- glue::glue(
   {github_username}"
 )
 
-# Fix Heroes image URL in hero_kd_summary
-hero_kd_summary <- hero_kd_summary %>%
-  mutate(
-    image_url = case_when(
-      hero_name == "phoenix" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/40/img_phoenix.png",
-      hero_name == "captain america" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/3/img_captain-america.png",
-      hero_name == "moon knight" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/16/img_moon-knight.png",
-      hero_name == "star-lord" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/24/img_star-lord.png",
-      hero_name == "the punisher" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/20/img_icon_the-punisher.webp",
-      hero_name == "winter soldier" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/28/img_winter-soldier.webp",
-      hero_name == "jeff the land shark" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/10/img_jeff-the-land-shark.webp",
-      hero_name == "venom" ~ "https://rivalskins.com/wp-content/uploads/marvel-assets/items/spray/27/img_venom.webp",
 
-      TRUE ~ image_url
-    )
-  )
 
-## Factor Re-Order!!!!!!
-
-# Then recreate hero_polar with the fixed data
 hero_polar <- hero_kd_summary %>%
+  mutate(hero_name = str_to_title(hero_name)) %>% 
+  mutate(hero_name = reorder(hero_name, -avg_kills)) %>%
   select(hero_name, avg_kills, avg_deaths, role, image_url) %>%
-  pivot_longer(cols = c(avg_kills, avg_deaths), 
-               names_to = "stat", 
+  pivot_longer(cols = c(avg_kills, avg_deaths),
+               names_to = "stat",
                values_to = "value") %>%
   mutate(stat_label = ifelse(stat == "avg_kills", "Kills", "Deaths")) %>%
-  mutate(hero_name = str_to_title(hero_name)) %>%
+  mutate(hero_name = reorder(hero_name, -value[stat == "avg_kills"][match(hero_name, hero_name[stat == "avg_kills"])])) %>%
   group_by(hero_name) %>%
   mutate(
     pct = value / sum(value),
     y_pos = cumsum(pct) - 0.5 * pct
   )
 
-# Plot
+# Plot 
 hero_polar %>%
   ggplot() +
-  # Adding Images from website URL
   geom_from_path(
     data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
     aes(x = 0, y = 0, path = image_url),
     width = 0.50) +
+  geom_col(aes(x = 5, y = pct, fill = stat_label), width = 2, alpha = 0.8) +
   
-  # Donut Hole plot
-  geom_col(aes(x = 5, y = pct, fill = stat_label), width = 2, alpha = 0.8) +  # Change x from 3 to 4
-
-  geom_text(aes(x = 5.2, y = y_pos, label = round(value, 1)),  # Adjust text position too
-            size = 4, fontface = "bold") +
+  # Percentage Number
+  geom_text(
+  data = . %>% filter(value > 0),
+  aes(
+    x = 5.1,
+    y = y_pos,
+    label = paste0(round(pct * 100, 1), "%")),
+  size = 3.3,
+  fontface = "bold",
+  color = "#0A0A0A"
+) +
   
-  facet_wrap(~hero_name, ncol = 4) +
-  
+  facet_wrap(~role + hero_name, ncol = 5) +
   scale_fill_manual(values = c("Kills" = "#99381E", "Deaths" = "#4E5472")) +
-  
   coord_polar("y") +
-  
-  xlim(0, 6) +  # Increase limit to accommodate new positions
-  
+  xlim(0, 6) +
   labs(fill = "",
        title = title,
-       subtitle= "Kill to Death Comparison",
+       #subtitle = "Kill to Death Comparison",
        caption = caption) +
-  
   theme_void() +
-  
   theme(
     plot.background = element_rect(fill = "lightgrey", color = "aliceblue", linewidth = 3),
     panel.background = element_rect(fill = "azure2"),
-    
-  strip.text = element_text(size = 12, face = "bold", margin = margin(b = 5)),
-  
-  legend.position = "bottom",
-  
-  legend.text = element_text(size = 15),
-  
-  plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
-  
-  panel.spacing = unit(1.5, "lines"),
-  
-  plot.title = ggtext::element_markdown(
-    family = "noto-sans",
-    face = "bold",
-    size = 20,
-    hjust = 0.5,
-    color = "#ACAB97",
-    margin = margin(b = 10)),
-  
-  plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 20)),
-  
-  plot.caption = ggtext::element_markdown(
-    face = "italic",
-    size = 8,
-    margin = margin(t = 15),
-    lineheight = 1.5)
+    strip.text = element_text(size = 12, face = "bold", margin = margin(b = 5)),
+    legend.position = "none",
+    #legend.text = element_text(size = 15),
+    plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
+    panel.spacing = unit(1.5, "lines"),
+    plot.title = ggtext::element_markdown(
+      family = "noto-sans", face = "bold", size = 20,
+      hjust = 0.5, color = "#ACAB97", margin = margin(b = 10)),
+    plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 20)),
+    plot.caption = ggtext::element_markdown(
+      face = "italic", size = 10, margin = margin(t = 15), lineheight = 1.5)
   )
-  
-# Uncomment To Show Correctly
 
-# Always turn off
-#showtext.auto(enable = FALSE)
+showtext.auto(enable = FALSE)
 
 ```
+
+
+
+
 # Role Stats Finalizing
 ```{r}
-# role_stats <- role_stats %>% 
-#   mutate(
-#     image_url = case_when(
-#       role == "Duelist" ~ "https://pbs.twimg.com/media/GuypdJiWcAEZmFD.jpg",
-#       TRUE ~ image_url
-#     )
-#   )
+role_stats <- role_stats %>%
+  left_join(
+    hero_polar %>% distinct(role, image_url),
+    by = "role"
+  )
+
+
 # Bar Chart - Win Rate by Roles
 ggplot(role_stats, aes(x = role, y = win_rate)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = paste0(round(win_rate*100, 1), "%")), vjust = -0.5) +
   labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")+
   geom_image(aes(image =))
+
+```
+# Updated
+```{r}
+
+ggplot(role_stats, aes(x = win_rate, y = 1, size = games, fill = role)) +
+  geom_point(shape = 21, alpha = 0.7) +
+  scale_size_continuous(range = c(10, 40)) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  labs(
+    title = "Win Rate by Role",
+    subtitle = "Bubble size represents games played",
+    x = "Win Rate",
+    y = "",
+    fill = "Role",
+    size = "Games Played"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  ) +
+  guides(
+    fill = guide_legend(override.aes = list(size = 8)),  # bigger role circles
+    size = guide_legend(override.aes = list(size = c(2, 4, 6)))  # smaller games circles
+  )
+```
+# Final Version
+```{r}
+size_range <- c(20, 60)
+max_games <- max(role_stats4$games)
+
+# key: get actual plot dimensions to correct aspect ratio
+x_range <- 1       # 0 to 1 (0% to 100%)
+y_range <- 0.4     # approximate y range visible in plot
+
+role_stats4 <- role_stats4 %>%
+  group_by(role) %>%
+  mutate(
+    pt_size = size_range[1] + (games / max_games) * (size_range[2] - size_range[1]),
+    r = pt_size * 0.0008,
+    angle = 2 * pi * (hero_index - 1) / n_heroes,
+    image_x = win_rate + r * cos(angle),
+    image_y = 1 + (r * (x_range / y_range) * 0.15) * sin(angle)  # correct for aspect ratio
+  ) %>%
+  ungroup()
+
+ggplot(role_stats4 %>% distinct(role, win_rate, games), aes(x = win_rate, y = 1)) +
+  geom_point(aes(size = games, fill = role), shape = 21, alpha = 0.7) +
+  geom_image(
+    data = role_stats4,
+    aes(x = image_x, y = image_y, image = image_url),
+    size = 0.090  ) +
+  scale_size_continuous(range = size_range) +
+  scale_fill_manual(values = c("Duelist" = "#e74c3c", "Strategist" = "#2ecc71", "Vanguard" = "#3498db")) +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0.75, 1.25)) +  # tighten y range to reduce distortion
+  labs(
+    title = "Win Rate by Role",
+    subtitle = "Bubble size represents games played",
+    x = "Win Rate",
+    y = "",
+    fill = "Role",
+    size = "Games Played"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  ) +
+  guides(
+    fill = guide_legend(override.aes = list(size = 8)),
+    size = guide_legend(override.aes = list(size = c(2, 4, 6)))
+  )
 
 ```
 
