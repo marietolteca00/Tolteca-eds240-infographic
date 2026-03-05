@@ -84,7 +84,7 @@ hero_polar <- hero_kd_summary %>%
   )
 
 # Plot 
-hero_polar %>%
+kd_plot <- hero_polar %>%
   ggplot() +
   geom_from_path(
     data = hero_polar %>% distinct(hero_name, .keep_all = TRUE),
@@ -129,10 +129,33 @@ hero_polar %>%
       face = "italic", size = 10, margin = margin(t = 15), lineheight = 1.5)
   )
 
+kd_plot
 showtext.auto(enable = FALSE)
 
 ```
+# Save Image
+```{r}
 
+#..............enable {showtext} for newly opened GD.............
+showtext_auto(enable = TRUE)
+
+#...................set resolution to match GD...................
+showtext_opts(dpi = 300)
+
+#..............write plot to file (aka save as png)..............
+ggsave(
+  filename = here::here("images", "kd_plot.pdf"),
+  plot = kd_plot,
+  device = "pdf",
+  width = 12, 
+  height = 10,
+  unit = "in",
+  dpi = 500
+)
+
+#...............turn off {showtext} text rendering...............
+showtext_auto(enable = FALSE)
+```
 
 
 
@@ -173,6 +196,7 @@ ggplot(role_stats, aes(x = win_rate, y = 1, size = games, fill = role)) +
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
     panel.grid.major.y = element_blank(),
+    legend.position = "top",
     legend.title = element_text(size = 12),
     legend.text = element_text(size = 10)
   ) +
@@ -181,8 +205,25 @@ ggplot(role_stats, aes(x = win_rate, y = 1, size = games, fill = role)) +
     size = guide_legend(override.aes = list(size = c(2, 4, 6)))  # smaller games circles
   )
 ```
-# Final Version
+# Data Wrangle
 ```{r}
+# max_games <- max(role_stats$games)
+# radius_scale <- 0.06  # tweak this to change overall circle sizes
+# 
+# role_stats4 <- role_stats %>%
+#   group_by(role) %>%
+#   mutate(
+#     hero_index = row_number(),
+#     n_heroes = n(),
+#     r = games / max_games * radius_scale,
+#     angle = 2 * pi * (hero_index - 1) / n_heroes,
+#     # position images at ~60% of radius so they stay inside the circle
+#     image_x = win_rate + (r * 0.6) * cos(angle),
+#     image_y = 1 + (r * 0.6) * sin(angle)
+#   ) %>%
+#   ungroup()
+
+
 size_range <- c(20, 60)
 max_games <- max(role_stats4$games)
 
@@ -197,40 +238,257 @@ role_stats4 <- role_stats4 %>%
     r = pt_size * 0.0008,
     angle = 2 * pi * (hero_index - 1) / n_heroes,
     image_x = win_rate + r * cos(angle),
-    image_y = 1 + (r * (x_range / y_range) * 0.15) * sin(angle)  # correct for aspect ratio
+    image_y = 1 + (r * (x_range / y_range) * 0.15) * sin(angle)  
   ) %>%
   ungroup()
+```
 
-ggplot(role_stats4 %>% distinct(role, win_rate, games), aes(x = win_rate, y = 1)) +
-  geom_point(aes(size = games, fill = role), shape = 21, alpha = 0.7) +
+
+# Final Viz before Affinity Edits
+```{r,warning=FALSE}
+#| fig-width: 10
+#| fig-height: 8
+#| out-width: "100%"
+
+
+showtext.auto(enable = TRUE)
+
+#..........................create title..........................
+title <- glue::glue("<span style='color:#000000;'>Win</span>
+                    <span style='color:#000000;'>Rate</span>
+                    <span style='color:#ACAB97;'>by</span>
+                    <span style='color:#000000;'>Role</span>")
+
+#.........................create caption.........................
+
+github_icon <- "\uf09b"
+github_username <- "marietolteca00"
+
+caption <- glue::glue(
+  "Data Source: ©2026 MARVEL <br>
+  <span style='font-family:fa-brands;'>{github_icon}</span>
+  {github_username}"
+)
+
+win_rate <- ggplot(role_stats4 %>% distinct(role, win_rate, games), aes(x = win_rate, y = 1)) +
+  
+  # black to dark red Marvel gradient
+  annotation_custom(
+    grid::rasterGrob(
+      matrix(c("#0a0a0a", "#1a0a0a", "#2d0a0a", "#8b0000"), nrow = 1),
+      width = unit(1, "npc"), height = unit(1, "npc"),
+      interpolate = TRUE
+    ),
+    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+  ) +
+  
+  geom_point(aes(size = games, fill = role), shape = 21, alpha = 0.8) +
+  
   geom_image(
     data = role_stats4,
     aes(x = image_x, y = image_y, image = image_url),
-    size = 0.090  ) +
+    size = 0.080
+  ) +
+  
+  # role label below each bubble
+  geom_text(
+    data = role_stats4 %>% distinct(role, win_rate, games),
+    aes(x = win_rate, y = 0.91, label = role, color = role),
+    fontface = "bold", size = 4.5
+  ) +
+  
   scale_size_continuous(range = size_range) +
-  scale_fill_manual(values = c("Duelist" = "#e74c3c", "Strategist" = "#2ecc71", "Vanguard" = "#3498db")) +
+  scale_fill_manual(values = c(
+    "Duelist"    = "#E69F00",   # orange
+    "Strategist" = "#56B4E9",   # sky blue
+    "Vanguard"   = "#D55E00"    # vermillion
+  )) +
+  scale_color_manual(values = c(
+    "Duelist"    = "#E69F00",
+    "Strategist" = "#56B4E9",
+    "Vanguard"   = "#D55E00"
+  ))+
+  
   scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
-  scale_y_continuous(limits = c(0.75, 1.25)) +  # tighten y range to reduce distortion
+  scale_y_continuous(limits = c(0.88, 1.15)) +
+
+  
   labs(
-    title = "Win Rate by Role",
+    title = title,
     subtitle = "Bubble size represents games played",
     x = "Win Rate",
     y = "",
-    fill = "Role",
+    caption = caption,
     size = "Games Played"
   ) +
-  theme_minimal() +
+  
+  theme_void() +
   theme(
-    axis.text.y = element_blank(),
+    plot.background  = element_rect(fill = "#343A51", color = "#8b0000", linewidth = 4),
+    panel.background = element_rect(fill = NA),
+    
+    # subtle red-tinted gridlines
+    panel.grid.major.x = element_line(color = "#3d0000", linewidth = 0.4, linetype = "dashed"),
+    panel.grid.minor.x = element_line(color = "#1f0000", linewidth = 0.2, linetype = "dotted"),
+    
+    # x-axis in silver/white
+    axis.text.x  = element_text(size = 10, color = "#c0c0c0"),
+    axis.ticks.x = element_line(color = "#c0c0c0"),
+    axis.title.x = element_text(size = 12, color = "#ffffff", face = "bold", margin = margin(t = 8)),
+    
+    axis.text.y  = element_blank(),
     axis.ticks.y = element_blank(),
     panel.grid.major.y = element_blank(),
-    legend.title = element_text(size = 12),
-    legend.text = element_text(size = 10)
+    
+    # legend in silver/white
+    legend.title    = element_text(size = 12, face = "bold", color = "#ffffff"),
+    legend.text     = element_text(size = 12, color = "#ffffff"),
+    legend.position = "top",
+    
+    plot.title = ggtext::element_markdown(
+      family = "noto-sans", face = "bold", size = 30,
+      hjust = 0.5, color = "#ffffff", margin = margin(b = 5, t=15)),
+    plot.subtitle = ggtext::element_markdown(
+      size = 18, hjust = 0.5, color = "#c0c0c0",
+      family = "bold.italic",
+      margin = margin(b = 10)),
+    plot.caption = ggtext::element_markdown(
+      face = "italic", size = 10, color = "#c0c0c0",
+      margin = margin(t = 5), lineheight = 1.5, hjust = 0.98)
   ) +
+  
   guides(
-    fill = guide_legend(override.aes = list(size = 8)),
-    size = guide_legend(override.aes = list(size = c(2, 4, 6)))
+    fill  = "none",
+    color = "none",
+    size  = guide_legend(override.aes = list(
+      size = c(2, 4, 6),
+      color = "white"  # legend circle outlines in white
+    ))
   )
 
+win_rate
+showtext.auto(enable = FALSE)
+
 ```
+
+
+# Save Image
+```{r}
+
+#..............enable {showtext} for newly opened GD.............
+showtext_auto(enable = TRUE)
+
+#...................set resolution to match GD...................
+showtext_opts(dpi = 300)
+
+#..............write plot to file (aka save as png)..............
+ggsave(
+  filename = here::here("images", "win_rate.pdf"),
+  plot = win_rate,
+  device = "pdf",
+  width = 10, 
+  height = 8,
+  unit = "in",
+  dpi = 500
+)
+
+#...............turn off {showtext} text rendering...............
+showtext_auto(enable = FALSE)
+```
+
+
+
+
+
+```{r, warning=FALSE}
+
+# ggplot(role_stats4 %>% distinct(role, win_rate, games), aes(x = win_rate, y = 1)) +
+# 
+#   annotation_custom(
+#     grid::rasterGrob(
+#       matrix(c("#0a0a0a", "#1a0a0a", "#2d0a0a", "#8b0000"), nrow = 1),
+#       width = unit(1, "npc"), height = unit(1, "npc"),
+#       interpolate = TRUE
+#     ),
+#     xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+#   ) +
+# 
+#   geom_point(aes(size = games, fill = role), shape = 21, alpha = 0.8) +
+# 
+#   geom_image(
+#     data = role_stats4,
+#     aes(x = image_x, y = image_y, image = image_url),
+#     size = 0.090
+#   ) +
+# 
+#   # role labels just below each bubble — y = 0.91 brings them closer
+#   geom_text(
+#     data = role_stats4 %>% distinct(role, win_rate, games),
+#     aes(x = win_rate, y = 0.91, label = role, color = role),
+#     fontface = "bold", size = 4.5
+#   ) +
+# 
+#   scale_size_continuous(range = size_range) +
+#   scale_fill_manual(values = c(
+#     "Duelist"    = "#E69F00",
+#     "Strategist" = "#56B4E9",
+#     "Vanguard"   = "#D55E00"
+#   )) +
+#   scale_color_manual(values = c(
+#     "Duelist"    = "#E69F00",
+#     "Strategist" = "#56B4E9",
+#     "Vanguard"   = "#D55E00"
+#   )) +
+# 
+#   scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
+# 
+#   # tighten y limits to reduce empty space, push labels closer
+#   scale_y_continuous(limits = c(0.88, 1.15)) +
+# 
+#   labs(
+#     title = "Win Rate by Hero Role",
+#     subtitle = "Bubble size represents games played",
+#     x = "Win Rate",
+#     y = "",
+#     size = "Games Played"
+#   ) +
+# 
+#   theme_void() +
+#   theme(
+#     plot.background  = element_rect(fill = "#0a0a0a", color = "#8b0000", linewidth = 4),
+#     panel.background = element_rect(fill = NA),
+# 
+#     panel.grid.major.x = element_line(color = "#3d0000", linewidth = 0.4, linetype = "dashed"),
+#     panel.grid.minor.x = element_line(color = "#1f0000", linewidth = 0.2, linetype = "dotted"),
+# 
+#     axis.text.x  = element_text(size = 10, color = "#c0c0c0"),
+#     axis.ticks.x = element_line(color = "#c0c0c0"),
+#     axis.title.x = element_text(size = 12, color = "#ffffff", face = "bold", margin = margin(t = 8)),
+# 
+#     axis.text.y  = element_blank(),
+#     axis.ticks.y = element_blank(),
+#     panel.grid.major.y = element_blank(),
+# 
+#     legend.title    = element_text(size = 12, face = "bold", color = "#ffffff"),
+#     legend.text     = element_text(size = 12, color = "#c0c0c0"),
+#     legend.position = "top",
+# 
+#     plot.title = ggtext::element_markdown(
+#       family = "noto-sans", face = "bold", size = 22,
+#       hjust = 0.5, color = "#ffffff", margin = margin(t = 15, b = 5)),
+#     plot.subtitle = ggtext::element_markdown(
+#       size = 11, hjust = 0.5, color = "#c0c0c0",
+#       margin = margin(b = 10)),
+#     plot.caption = ggtext::element_markdown(
+#       face = "italic", size = 10, color = "#c0c0c0",
+#       margin = margin(t = 15), lineheight = 1.5)
+#   ) +
+# 
+#   guides(
+#     fill  = "none",
+#     color = "none",
+#     size  = guide_legend(override.aes = list(size = c(2, 4, 6), color = "white"))
+#   )
+```
+
 
