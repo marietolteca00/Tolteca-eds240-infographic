@@ -116,17 +116,18 @@ kd_plot <- hero_polar %>%
   theme(
     plot.background = element_rect(fill = "lightgrey", color = "aliceblue", linewidth = 3),
     panel.background = element_rect(fill = "azure2"),
-    strip.text = element_text(size = 12, face = "bold", margin = margin(b = 5)),
+    # Role and Hero Names
+    strip.text = element_text(size = 14, face = "bold", margin = margin(b = 5)),
     legend.position = "none",
     #legend.text = element_text(size = 15),
     plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
     panel.spacing = unit(1.5, "lines"),
     plot.title = ggtext::element_markdown(
-      family = "noto-sans", face = "bold", size = 20,
+      family = "noto-sans", face = "bold", size = 25,
       hjust = 0.5, color = "#ACAB97", margin = margin(b = 10)),
     plot.subtitle = element_text(hjust = 0.5, margin = margin(b = 20)),
     plot.caption = ggtext::element_markdown(
-      face = "italic", size = 10, margin = margin(t = 15), lineheight = 1.5)
+      face = "italic", size = 12, margin = margin(t = 15), lineheight = 1.5)
   )
 
 kd_plot
@@ -207,21 +208,21 @@ ggplot(role_stats, aes(x = win_rate, y = 1, size = games, fill = role)) +
 ```
 # Data Wrangle
 ```{r}
-# max_games <- max(role_stats$games)
-# radius_scale <- 0.06  # tweak this to change overall circle sizes
-# 
-# role_stats4 <- role_stats %>%
-#   group_by(role) %>%
-#   mutate(
-#     hero_index = row_number(),
-#     n_heroes = n(),
-#     r = games / max_games * radius_scale,
-#     angle = 2 * pi * (hero_index - 1) / n_heroes,
-#     # position images at ~60% of radius so they stay inside the circle
-#     image_x = win_rate + (r * 0.6) * cos(angle),
-#     image_y = 1 + (r * 0.6) * sin(angle)
-#   ) %>%
-#   ungroup()
+max_games <- max(role_stats$games)
+radius_scale <- 0.06  # tweak this to change overall circle sizes
+
+role_stats4 <- role_stats %>%
+  group_by(role) %>%
+  mutate(
+    hero_index = row_number(),
+    n_heroes = n(),
+    r = games / max_games * radius_scale,
+    angle = 2 * pi * (hero_index - 1) / n_heroes,
+    # position images at ~60% of radius so they stay inside the circle
+    image_x = win_rate + (r * 0.6) * cos(angle),
+    image_y = 1 + (r * 0.6) * sin(angle)
+  ) %>%
+  ungroup()
 
 
 size_range <- c(20, 60)
@@ -332,9 +333,9 @@ win_rate <- ggplot(role_stats4 %>% distinct(role, win_rate, games), aes(x = win_
     panel.grid.minor.x = element_line(color = "#1f0000", linewidth = 0.2, linetype = "dotted"),
     
     # x-axis in silver/white
-    axis.text.x  = element_text(size = 10, color = "#c0c0c0"),
-    axis.ticks.x = element_line(color = "#c0c0c0"),
-    axis.title.x = element_text(size = 12, color = "#ffffff", face = "bold", margin = margin(t = 8)),
+    axis.text.x  = element_text(size = 15, color = "#c0c0c0", margin = margin(t = 8)),
+    axis.ticks.x = element_line(color = "#c0c0c0", size = 2, margin = margin(t=8)),
+    axis.title.x = element_text(size = 15, color = "#ffffff", face = "bold", margin = margin(t = 8)),
     
     axis.text.y  = element_blank(),
     axis.ticks.y = element_blank(),

@@ -558,6 +558,8 @@ scale_fill_manual(values = c("Kills" = "#4E5472", "Deaths" = "#99381E")) +
 
 # Maybe use- Undecided yet
 ```{r}
+clean_season <- read_csv(here::here('data','clean_season.csv'))
+
 # Palette for Character
 my_colors <- c("moon knight" = "#E6D38A", 
                "star-lord" = "#603920",
@@ -602,5 +604,24 @@ ggplot(top_heroes, aes(
   theme(legend.position = "none")
 ```
 
+```{r}
+role_colors <- c("Duelist" = "#C58D12", "Vanguard" = "#D55E00", "Strategist" = "#5AA6D4")
+
+ggplot(top_heroes, aes(
+       x = reorder(hero_name, total_duration_min),
+       y = total_duration_min,
+       color = role
+     )) +
+  geom_point(size = 4) +
+  scale_color_manual(values = role_colors) +
+  coord_flip() +
+  labs(
+    title = "Top 10 Most Used Heroes by Duration",
+    x = "Hero Name",
+    y = "Total Duration (min)",
+    color = "Role"
+  ) +
+  theme_minimal()
+```
 
 
