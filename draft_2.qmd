@@ -492,4 +492,67 @@ showtext_auto(enable = FALSE)
 #   )
 ```
 
+# Last Viz
+```{r, message=FALSE}
+clean_season <- read_csv(here::here('data','clean_season.csv'))
 
+hero_usage <- clean_season %>%
+  group_by(hero_name, hero_type, role) %>%
+  summarise(
+    total_duration_min = sum(duration, na.rm = TRUE),
+    total_duration_hours = round(sum(duration, na.rm = TRUE) / 60, 2)
+  ) %>%
+  arrange(desc(total_duration_min))
+
+top_heroes <- hero_usage %>%
+  slice_max(order_by = total_duration_min, n = 10) %>% 
+  mutate(hero_name = str_to_title(hero_name)) 
+
+  
+```
+
+```{r}
+
+role_colors <- c("Duelist" = "#C58D12", "Vanguard" = "#D55E00", "Strategist" = "#5AA6D4")
+
+hero_duration <- ggplot(top_heroes, aes(
+       x = reorder(hero_name, total_duration_min),
+       y = total_duration_hours,
+       fill = role
+     )) +
+  geom_point(size = 4, shape = 21, color = "black", stroke = 1) +
+  scale_fill_manual(values = role_colors) +
+  coord_flip() +
+  labs(
+    title = "Most Used Heroes by Duration",
+    x = "",
+    y = "Total Duration (min)",
+    fill = "Role"
+  ) +
+  theme_linedraw()
+
+hero_duration
+```
+# Save Image
+```{r}
+
+#..............enable {showtext} for newly opened GD.............
+showtext_auto(enable = TRUE)
+
+#...................set resolution to match GD...................
+showtext_opts(dpi = 300)
+
+#..............write plot to file (aka save as png)..............
+ggsave(
+  filename = here::here("images", "win_rate.pdf"),
+  plot = win_rate,
+  device = "pdf",
+  width = 10, 
+  height = 8,
+  unit = "in",
+  dpi = 500
+)
+
+#...............turn off {showtext} text rendering...............
+showtext_auto(enable = FALSE)
+```
