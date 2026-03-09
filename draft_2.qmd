@@ -15,7 +15,9 @@ library(glue)
 library(showtext)
 library(ggtext)
 library(ggpath)
-
+library(magick)
+library(forcats)
+library(sysfonts)
 
 #......................import Google fonts.......................
 # `name` is the name of the font as it appears in Google Fonts
@@ -397,101 +399,6 @@ ggsave(
 showtext_auto(enable = FALSE)
 ```
 
-
-
-
-
-```{r, warning=FALSE}
-
-# ggplot(role_stats4 %>% distinct(role, win_rate, games), aes(x = win_rate, y = 1)) +
-# 
-#   annotation_custom(
-#     grid::rasterGrob(
-#       matrix(c("#0a0a0a", "#1a0a0a", "#2d0a0a", "#8b0000"), nrow = 1),
-#       width = unit(1, "npc"), height = unit(1, "npc"),
-#       interpolate = TRUE
-#     ),
-#     xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
-#   ) +
-# 
-#   geom_point(aes(size = games, fill = role), shape = 21, alpha = 0.8) +
-# 
-#   geom_image(
-#     data = role_stats4,
-#     aes(x = image_x, y = image_y, image = image_url),
-#     size = 0.090
-#   ) +
-# 
-#   # role labels just below each bubble — y = 0.91 brings them closer
-#   geom_text(
-#     data = role_stats4 %>% distinct(role, win_rate, games),
-#     aes(x = win_rate, y = 0.91, label = role, color = role),
-#     fontface = "bold", size = 4.5
-#   ) +
-# 
-#   scale_size_continuous(range = size_range) +
-#   scale_fill_manual(values = c(
-#     "Duelist"    = "#E69F00",
-#     "Strategist" = "#56B4E9",
-#     "Vanguard"   = "#D55E00"
-#   )) +
-#   scale_color_manual(values = c(
-#     "Duelist"    = "#E69F00",
-#     "Strategist" = "#56B4E9",
-#     "Vanguard"   = "#D55E00"
-#   )) +
-# 
-#   scale_x_continuous(labels = scales::percent, limits = c(0, 1)) +
-# 
-#   # tighten y limits to reduce empty space, push labels closer
-#   scale_y_continuous(limits = c(0.88, 1.15)) +
-# 
-#   labs(
-#     title = "Win Rate by Hero Role",
-#     subtitle = "Bubble size represents games played",
-#     x = "Win Rate",
-#     y = "",
-#     size = "Games Played"
-#   ) +
-# 
-#   theme_void() +
-#   theme(
-#     plot.background  = element_rect(fill = "#0a0a0a", color = "#8b0000", linewidth = 4),
-#     panel.background = element_rect(fill = NA),
-# 
-#     panel.grid.major.x = element_line(color = "#3d0000", linewidth = 0.4, linetype = "dashed"),
-#     panel.grid.minor.x = element_line(color = "#1f0000", linewidth = 0.2, linetype = "dotted"),
-# 
-#     axis.text.x  = element_text(size = 10, color = "#c0c0c0"),
-#     axis.ticks.x = element_line(color = "#c0c0c0"),
-#     axis.title.x = element_text(size = 12, color = "#ffffff", face = "bold", margin = margin(t = 8)),
-# 
-#     axis.text.y  = element_blank(),
-#     axis.ticks.y = element_blank(),
-#     panel.grid.major.y = element_blank(),
-# 
-#     legend.title    = element_text(size = 12, face = "bold", color = "#ffffff"),
-#     legend.text     = element_text(size = 12, color = "#c0c0c0"),
-#     legend.position = "top",
-# 
-#     plot.title = ggtext::element_markdown(
-#       family = "noto-sans", face = "bold", size = 22,
-#       hjust = 0.5, color = "#ffffff", margin = margin(t = 15, b = 5)),
-#     plot.subtitle = ggtext::element_markdown(
-#       size = 11, hjust = 0.5, color = "#c0c0c0",
-#       margin = margin(b = 10)),
-#     plot.caption = ggtext::element_markdown(
-#       face = "italic", size = 10, color = "#c0c0c0",
-#       margin = margin(t = 15), lineheight = 1.5)
-#   ) +
-# 
-#   guides(
-#     fill  = "none",
-#     color = "none",
-#     size  = guide_legend(override.aes = list(size = c(2, 4, 6), color = "white"))
-#   )
-```
-
 # Last Viz
 ```{r, message=FALSE}
 clean_season <- read_csv(here::here('data','clean_season.csv'))
@@ -533,26 +440,201 @@ hero_duration <- ggplot(top_heroes, aes(
 
 hero_duration
 ```
-# Save Image
+# Data Wrangle
 ```{r}
+# ── Data ──────────────────────────────────────────────────────
+max_hours_scalar <- max(top_heroes$total_duration_hours, na.rm = TRUE)
 
-#..............enable {showtext} for newly opened GD.............
+plot_df <- top_heroes %>%
+  left_join(
+    hero_polar %>% distinct(hero_name, image_url),
+    by = "hero_name"
+  ) %>%
+  mutate(fraction = total_duration_hours / max_hours_scalar) %>%
+  arrange(desc(total_duration_hours))
+
+hero_order <- plot_df$hero_name
+
+# ── Portrait maker ────────────────────────────────────────────
+SIZE <- 160L
+
+make_composite_portrait <- function(image_url, fraction, role, hero_name) {
+  col       <- role_colors_hex[[role]]
+  grey_rows <- max(0L, round((1 - fraction) * SIZE))
+  vis_rows  <- SIZE - grey_rows
+
+  img <- tryCatch({
+    magick::image_read(image_url) %>%
+      magick::image_resize(paste0(SIZE, "x", SIZE, "!")) %>%
+      magick::image_convert(colorspace = "sRGB")
+  }, error = function(e) {
+    message("  ! Failed: ", hero_name)
+    magick::image_blank(SIZE, SIZE, color = col)
+  })
+
+  if (vis_rows <= 0L) {
+    composite <- magick::image_colorize(img, opacity = 85, color = "#2B3C43")
+  } else if (grey_rows <= 0L) {
+    composite <- img
+  } else {
+    full_grey    <- magick::image_colorize(img, opacity = 85, color = "#2B3C43")
+    colour_strip <- magick::image_crop(img, paste0(SIZE, "x", vis_rows, "+0+0"))
+    composite    <- magick::image_composite(full_grey, colour_strip,
+                                            operator = "Over", offset = "+0+0")
+  }
+
+  if (grey_rows > 3L && grey_rows < SIZE - 3L) {
+    divider   <- magick::image_blank(SIZE, 4L, color = col)
+    composite <- magick::image_composite(composite, divider,
+                                         operator = "Over",
+                                         offset   = paste0("+0+", grey_rows - 2L))
+  }
+
+  composite <- magick::image_extent(composite,
+                                    geometry = paste0(SIZE + 8L, "x", SIZE + 8L),
+                                    gravity  = "Center", color = col)
+  tmp <- tempfile(fileext = ".png")
+  magick::image_write(composite, tmp, format = "png")
+  tmp
+}
+
+message("Generating portraits...")
+plot_df <- plot_df %>%
+  rowwise() %>%
+  mutate(bubble_img = make_composite_portrait(image_url, fraction, role, hero_name)) %>%
+  ungroup()
+message("Done.")
+```
+
+
+
+# Finalized Viz - Hero Duration
+```{r}
+#| fig-width: 15
+#| fig-height: 10
+#| out-width: "100%"
+
+
+# ── Enable showtext (correct function name) ───────────────────
 showtext_auto(enable = TRUE)
-
-#...................set resolution to match GD...................
 showtext_opts(dpi = 300)
 
-#..............write plot to file (aka save as png)..............
-ggsave(
-  filename = here::here("images", "win_rate.pdf"),
-  plot = win_rate,
-  device = "pdf",
-  width = 10, 
-  height = 8,
-  unit = "in",
-  dpi = 500
+# ── Role colours ──────────────────────────────────────────────
+role_colors_hex <- c(
+  "Duelist"    = "#C58D12",
+  "Vanguard"   = "#D55E00",
+  "Strategist" = "#5AA6D4"
 )
 
-#...............turn off {showtext} text rendering...............
+
+
+# ── Title & caption ───────────────────────────────────────────
+github_icon     <- "\uf09b"
+github_username <- "marietolteca00"
+
+title <- glue::glue(
+  "<span style='font-family:noto-sans; font-weight:bold;'>Most  Used  Hero  Duration  (Hours)</span>"
+)
+
+
+caption <- glue::glue(
+  "Data Source: \u00a92026 MARVEL<br>
+   <span style='font-family:fa-brands;'>{github_icon}</span> {github_username}"
+)
+
+# ── Plot ──────────────────────────────────────────────────────
+max_h <- max_hours_scalar
+
+duration <- ggplot(plot_df, aes(x = hero_name, y = total_duration_hours)) +
+
+  geom_image(
+    aes(image = bubble_img),
+    size = 0.07,
+    asp  = 12 / 9
+  ) +
+
+  # Hero name above the bubble — wrapped to avoid overflow
+  geom_text(
+    aes(y     = total_duration_hours + 0.99,
+        label = stringr::str_wrap(hero_name, width = 10),
+        color = role),
+    family    = "sarala",
+    size      = 5.6,
+    fontface  = "bold",
+    hjust     = 0.5,
+    lineheight = 0.85
+  ) +
+
+  # Hours label below the bubble
+  geom_text(
+    aes(y     = total_duration_hours - 0.75,
+        label = sprintf("%.1fh", total_duration_hours),
+        color = role),
+    family   = "red",
+    size     = 5,
+    fontface = "bold"
+  ) +
+
+  scale_color_manual(values = role_colors_hex, guide = "none") +
+  scale_x_discrete(limits = hero_order) +
+  scale_y_continuous(
+    limits = c(-1.0, max_h + 2.0),
+    breaks = seq(0, ceiling(max_h), by = 2),
+    expand = expansion(mult = c(0, 0))
+  ) +
+
+  labs(
+    title    = title,
+    subtitle = "Portrait fill shows Proportion of Max Playtime  \u2022  Dark Grey = Unused Portion",
+    x        = NULL,
+    y        = NULL,
+    caption  = caption
+  ) +
+
+  theme_minimal(base_family = "noto-sans", base_size = 13) +
+  theme(
+    plot.background    = element_rect(fill = "lightgrey", color = "#BCC7AA", linewidth = 3),
+    panel.background   = element_rect(fill = "azure2"),
+    axis.text.x        = element_blank(),
+    axis.text.y        = element_blank(),
+    axis.title.x       = element_blank(),
+    axis.title.y       = element_blank(),
+    axis.ticks         = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(color = "#cccccc80", linewidth = 0.4),
+    panel.grid.minor   = element_blank(),
+    legend.position    = "none",
+    plot.margin        = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
+    
+    # Title
+    plot.title         = ggtext::element_markdown(
+      family = "noto-sans", face = "bold", size = 26,
+      hjust = 0.5, color = "#333333", margin = margin(b = 8)),
+    
+    # Subtitle
+    plot.subtitle      = element_text(
+      family = "sarala", hjust = 0.5, size = 15,
+      color = "#666666", margin = margin(b = 15)),
+    
+    # Github and Data Source
+    plot.caption       = ggtext::element_markdown(
+      family = "noto-sans", face = "italic", size = 10,
+      hjust = 1, margin = margin(t = 15), lineheight = 1.5, color = "#888888")
+  )
+
+duration
+
+# ── Save ──────────────────────────────────────────────────────
+showtext_opts(dpi = 300)
+ggsave(
+  filename = here::here("images", "hero_duration.png"),
+  plot     = duration,
+  device   = "png",
+  width    = 15,
+  height   = 10,
+  unit     = "in",
+  dpi      = 300
+)
 showtext_auto(enable = FALSE)
 ```
+
