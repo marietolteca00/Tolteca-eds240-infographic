@@ -1,34 +1,134 @@
+# Marvel Rivals Infographic
 
+#### Author: Marie Tolteca, MEDS Student at **Bren School of Environmental Science & Management**
 
-# FIXXXXXXXXX UPDATEEEEEE
+#### Date: March 9, 2026
 
-#### Agriculture Crop Recommendation
+# Marvel Rivals: Gameplay Analysis
 
-Final Project Info-Graphic for EDS-240
+A personal data analysis project exploring my Marvel Rivals gameplay statistics across **Seasons 3–6**, covering both Quick Match and Competitive modes.
 
-##### Author: Marie Tolteca
+## Main Question
 
-##### Date: 01/21/2025
+**Am I optimizing my Marvel Rivals gameplay?** \#### Sub questions:
 
-In this repository, I will find which agriculture crops are best to grow in different areas depending on chemicals found in the soil. The chemicals that I am interested in are Phosphorus, Potassium, Nitrogen, and atmospheric levels. The crop type will range from rice to lentils to coffee with other crops in between.
+```         
+Which hero do I use the most and what type of role is it?
+What is my kill to death ratio for each hero and role used?
+Which role do I win the most with?
+```
 
-Questions:
+## Data
 
-What is the most consumed crop that farmers should be informed about to plant more? (will probably need to join another dataset)
+-   **Source:** [Marvel Rivals Tracker API](https://rivalsmeta.com/) (`marvelrivalsapi.com`)
+-   **Player Username:** `kpil11`
+-   **Seasons:** 3–6 (Quick Match + Competitive)
+-   **Fields:** hero, role, kills, deaths, assists, win/loss, damage, healing, match duration
 
-Which crop type has higher levels of Nitrogen and ph levels?
-
-# Repository Structure
-# UPDATE!!!!!!!
+## Repository
 
 ```         
 ├── data
-│   └── Crop_recommendation.csv
-├── eds240-infographic.Rproj
+│   ├── all_season_combined.csv
+│   ├── clean_season.csv
+│   ├── hero_kd_summary.csv
+│   ├── hero_polar.csv
+│   ├── role_kd_summary.csv
+│   └── role_stats.csv
+├── draft_2_files
+├── draft_2.html
+├── draft_2.qmd
+├── drafting_viz_files
+├── drafting_viz.html
+├── drafting_viz.qmd
+├── exploration_files
+├── exploration.html
+├── exploration.qmd
+├── fonts
+│   ├── Font Awesome 7 Brands-Regular-400.otf
+│   ├── Font Awesome 7 Free-Regular-400.otf
+│   └── Font Awesome 7 Free-Solid-900.otf
+├── images
+│   ├── Affinity_plots
+│   │   ├── info.pdf
+│   │   ├── info.png
+│   │   ├── K:D Comparison_Heroes.pdf
+│   │   ├── K:D Comparison_Heroes.png
+│   │   ├── MarvelRivals_BG.png
+│   │   ├── NEW_WIN_RAT.pdf
+│   │   ├── NEW_WIN_RATE.png
+│   │   └── old
+│   │       ├── win_rate_role.png
+│   │       └── win_rate.pdf
+│   │   └── predators.jpg
+│   ├── hero_duration.pdf
+│   ├── hero_duration.png
+│   ├── heroes
+│   │   ├── angela.tif
+│   │   ├── buckee.tif
+│   │   ├── captainamerica.tif
+│   │   ├── deadpool.tif
+│   │   ├── gambit.tif
+│   │   ├── ironman.tif
+│   │   ├── jefftheshark.tif
+│   │   ├── moonknight.tif
+│   │   ├── phoenix.tif
+│   │   ├── punisher.tif
+│   │   ├── squirrelgirl.tif
+│   │   ├── starlord.tif
+│   │   └── venom.tif
+│   ├── kd_plot.pdf
+│   ├── kd_plot.png
+│   ├── win_rate.pdf
+│   └── win_rate.png
+├── initial_analysis_files
+├── initial_analysis.html
 ├── initial_analysis.qmd
-└── README.md
+├── output
+│   ├── all_season_df.csv
+│   ├── s3_s6_competitive.csv
+│   ├── s4_competitive_matches.csv
+│   ├── s4_quick_matches.csv
+│   ├── s5_competitive_matches.csv
+│   ├── s5_quick_matches.csv
+│   ├── s6_competitive_matches.csv
+│   ├── s6_quick_matches.csv
+│   └── season_5_stats.csv
+├── README.md
+└── Tolteca-eds240-infographic.Rproj
 ```
 
-# Data Access
+## Visualizations
 
-Data was retreived from a website called Kaggle a platform for data scientist and machine learning individuals. The [Crop Recommendation Dataset]('%3Chttps://www.kaggle.com/datasets/ishank2005/crop-reproduction-ecosystem-recommendation/data%3E'), this is an agricultural dataset containing soil and environmental parameters.
+### 1. Hero Playtime
+
+Scatter-style chart showing hours played per hero. Portrait fill indicates proportion of max playtime. **Moon Knight** and **Phoenix** are the most-played heroes.
+
+### 2. Kill vs Death Comparison
+
+Donut charts comparing kill/death percentages per hero, grouped by role (Duelist, Strategist, Vanguard). Most Duelists have kill rates between 64–73%.
+
+### 3. Win Rate by Role
+
+Bubble chart showing win rate per role. Bubble size = games played. Strategists have the highest win rate; Vanguards have the lowest.
+
+## Key Findings
+
+-   Kill-to-death ratios are generally positive, especially among Duelists.
+-   Win rates differ by role — damage output alone doesn't drive wins.
+-   Switching roles strategically based on team composition may improve outcomes.
+
+## Libraries
+
+`tidyverse`, `ggplot2`, `ggimage`, `ggtext`, `patchwork`, `magick`, `showtext`, `glue`, `forcats`, `httr`, `jsonlite`
+
+## Game Modes Available
+
+These are the type of games modes offered by Marvel Rivals, however I am comparing all the modes.
+```
+| Mode | Type |
+|------|------|
+| Convoy | Payload escort |
+| Domination | King of the Hill |
+| Convergence | Hybrid (capture + escort) |
+```
