@@ -139,7 +139,7 @@ hero_kd_summary <- clean_season %>%
     games = n(),
     .groups = "drop"
   ) %>%
-  filter(games >= 1)   # Only heroes with 3+ games
+  filter(games >= 1)
 
 # Map performance by hero (filter maps with 3+ games)
 map_hero_performance <- clean_season %>%

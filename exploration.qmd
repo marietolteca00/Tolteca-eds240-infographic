@@ -16,7 +16,7 @@ library(tibble)
 library(ggimage)
 ```
 
-# Games from Season 3-5 for both Quick Match and Competitive
+# Games from Season 3-6 for both Quick Match and Competitive
 Created functions and for-loop to grab seasons 3-5 for Marvel Rival for my own status.
 ```{r}
 api_key <- "eb86e90ed5b97e7e59b61602423419d9477d9d7f7481901ad3cc1b9ad9124271"

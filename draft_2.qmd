@@ -43,7 +43,7 @@ role_stats <- read.csv(here('data','role_stats.csv'))
 ```
 
 # UPDATED K/D Percent Ratio
-```{r, warning=FALSE}
+```{r, messages = FALSE, warning=FALSE}
 #| fig-width: 12
 #| fig-height: 10
 #| out-width: "100%"
@@ -162,7 +162,7 @@ showtext_auto(enable = FALSE)
 
 
 
-# Role Stats Finalizing
+# Role Stats Finalizing- Data Wrangle
 ```{r}
 role_stats <- role_stats %>%
   left_join(
@@ -170,16 +170,10 @@ role_stats <- role_stats %>%
     by = "role"
   )
 
-
-# Bar Chart - Win Rate by Roles
-ggplot(role_stats, aes(x = role, y = win_rate)) +
-  geom_col(fill = "steelblue") +
-  geom_text(aes(label = paste0(round(win_rate*100, 1), "%")), vjust = -0.5) +
-  labs(x = "Role", y = "Win Rate", title = "Win Rate by Role")+
-  geom_image(aes(image =))
-
+# Write CSV
+write.csv(role_stats, here("data/role_stats.csv"), row.names = FALSE)
 ```
-# Updated
+# First Draft
 ```{r}
 
 ggplot(role_stats, aes(x = win_rate, y = 1, size = games, fill = role)) +
